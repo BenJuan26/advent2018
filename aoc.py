@@ -1,28 +1,50 @@
 import subprocess
 import os
+import platform
+import sqlite3
+import shutil
+import requests
 
 def get_input(day):
     try:
         file = open("{}.txt".format(day))
         return file.read()
     except FileNotFoundError:
-        profiles_dir = os.path.expanduser(r"~/Library/Application\ Support/Firefox/Profiles")
+        return download_input(day)
 
-        proc = subprocess.run(["ls {}".format(profiles_dir)], stdout=subprocess.PIPE, check=True, shell=True)
-        profile = proc.stdout
-        profile = profile.decode('ASCII').strip()
+def download_input(day):
+    sys = platform.system()
+    firefox_dir = ""
+    if sys == "Windows":
+        appdata = os.getenv("APPDATA")
+        firefox_dir = os.path.join(appdata, "Mozilla", "Firefox", "Profiles")
+    elif sys == "Darwin":
+        firefox_dir = os.path.expanduser(r"~/Library/Application\ Support/Firefox/Profiles")
 
-        cookies_dir = "{}/{}".format(profiles_dir, profile)
+    dirs = os.listdir(firefox_dir)
+    profile = dirs[0]
 
-        subprocess.run(["cp {0}/cookies.sqlite {0}/cookies-copy.sqlite".format(cookies_dir)], check=True, shell=True)
-        proc = subprocess.run(["echo \"SELECT value FROM moz_cookies WHERE baseDomain = 'adventofcode.com'\" | sqlite3 {}/cookies-copy.sqlite".format(cookies_dir)], stdout=subprocess.PIPE, shell=True, check=True)
-        session = proc.stdout.decode('ASCII').strip()
-        subprocess.run(["rm {}/cookies-copy.sqlite*".format(cookies_dir)], shell=True, check=True)
+    profile_dir = os.path.join(firefox_dir, profile)
+    cookies_orig = os.path.join(profile_dir, "cookies.sqlite")
+    cookies_file = os.path.join(profile_dir, "cookies-copy.sqlite")
 
-        proc = subprocess.run(["curl -s https://adventofcode.com/2018/day/{}/input --cookie session={}".format(day, session)], stdout=subprocess.PIPE, shell=True, check=True)
-        data = proc.stdout.decode('ASCII').strip()
+    shutil.copy(cookies_orig, cookies_file)
 
-        file = open("{}.txt".format(day), "x")
-        file.write(data)
+    conn = sqlite3.connect(cookies_file)
+    cur = conn.cursor()
+    cur.execute("SELECT value FROM moz_cookies WHERE baseDomain = 'adventofcode.com'")
+    results = cur.fetchall()
+    session = results[0][0]
 
-        return data
+    conn.close()
+    os.remove(cookies_file)
+
+    url = "https://adventofcode.com/2018/day/{}/input".format(day)
+    cookies = {"session":session}
+    resp = requests.get(url, cookies=cookies)
+    data = resp.text.strip()
+
+    file = open("{}.txt".format(day), "x")
+    file.write(data)
+
+    return data

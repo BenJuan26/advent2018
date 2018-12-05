@@ -19,7 +19,7 @@ def download_input(day):
         appdata = os.getenv("APPDATA")
         firefox_dir = os.path.join(appdata, "Mozilla", "Firefox", "Profiles")
     elif sys == "Darwin":
-        firefox_dir = os.path.expanduser(r"~/Library/Application\ Support/Firefox/Profiles")
+        firefox_dir = os.path.expanduser(os.path.join("~", "Library", "Application Support", "Firefox", "Profiles"))
 
     dirs = os.listdir(firefox_dir)
     profile = dirs[0]

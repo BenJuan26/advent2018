@@ -1,6 +1,6 @@
 from aoc import get_input
 
-data = get_input(3)
+data = get_input(4)
 lines = data.split("\n")
 
 guards = {}
